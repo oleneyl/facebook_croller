@@ -1,4 +1,3 @@
-#! etc/bin/python3
 import urllib.request as req
 from bs4 import BeautifulSoup
 import time, json
@@ -66,21 +65,23 @@ def get_fb_req_url(pageid, ctime, ucount = 8, chattime = "04611686018427387904",
     return baseurl + page_id + cursor + tl_cursor + tl_unit + tl_section + older_request + has_npage + surface + unit_count + "".join(misc)
 """
 
-def get_html_at_url(url):
-    req_data = req.Request(url)
-    success = False
-    while success is False:
-        try:
-            response = req.urlopen(url)
-            if response.getcode() == 200:
-                success = True
-        except Exception as e:
-            print(e)  # want to know what error it is
-            time.sleep(5)
-            # print("Error for url %s : %s" % (url, datetime.datetime.now()))
+class Facebook():
+    @staticmethod
+    def get_jsonp_from_url(url):
+        req_data = req.Request(url)
+        success = False
+        while success is False:
+            try:
+                response = req.urlopen(url)
+                if response.getcode() == 200:
+                    success = True
+            except Exception as e:
+                print(e)  # want to know what error it is
+                time.sleep(5)
+                # print("Error for url %s : %s" % (url, datetime.datetime.now()))
 
-    return response.read().decode(response.headers.get_content_charset()) 
-    
+        return response.read().decode(response.headers.get_content_charset())
+
 
 def last_post_utime(responce_str):
     utime = int(time.time())    #Get execution utime
@@ -98,7 +99,7 @@ def last_post_utime(responce_str):
 #Deprecated
 def extract_post_in_page(page_id, post_id):
     req_url = "https://www.facebook.com/" + str(page_id) + "/posts/" + str(post_id)
-    html = get_html_at_url(req_url)
+    html = Facebook.get_jsonp_from_url(req_url)
     soup = BeautifulSoup(html, "html.parser")
     
     post_doc_meta = soup.find_all("div", {"class" : "hidden_elem"})[1].find("code").prettify()
@@ -122,6 +123,10 @@ class FB_Page():
     """
     def __init__(self, page_id):
         self.page_id = page_id
+
+    def extract_data_from_page(self):
+        responce_str = self.access_data(EXEC_TIME, 0, ucount = 5, ancestor_flag = False)
+        
 
     def extract_every_data_in_page(self,  trials, ucount = 50, intervals = 86400, as_file = True, target_dir = ".", _utime = EXEC_TIME, load_interval = 1):
         """ Get post id start from _utime, total trials * ucount.
@@ -211,7 +216,7 @@ class FB_Page():
         """Generate URL, and get POST_ID from given URL
         """
         req_url = self.get_fb_req_url(start_utime - before, ucount = ucount, ancestor_flag = ancestor_flag)
-        return get_html_at_url(req_url)
+        return Facebook.get_jsonp_from_url(req_url)
 
     def last_post_utime(self, responce_str):
         """Extract lat_post_utime in given responce_url
@@ -290,7 +295,7 @@ class FB_Post():
             return self.post_soup
         else:
             req_url = "https://www.facebook.com/" + str(self.page_id) + "/posts/" + str(self.post_id)
-            html = get_html_at_url(req_url)
+            html = Facebook.get_jsonp_from_url(req_url)
             soup = BeautifulSoup(html, "html.parser")
             self.post_soup = soup
             
@@ -444,7 +449,7 @@ class FB_Post():
         lsd = "lsd=AVo-0Vqk"
         
         url = baseurl + ftent + viewas + source + loc + ormode + section + "".join(feed_context) + npager + av + user + a + dyn + reqnum + be + pc + rev + lsd
-        jsonstr = get_html_at_url(url)[9:]
+        jsonstr = Facebook.get_jsonp_from_url(url)[9:]
         
         data = json.loads(jsonstr)
         c_li = data["jsmods"]["require"][0][3][1]["comments"]
@@ -490,12 +495,10 @@ if __name__ == "__main__":
     with open("plist1.dat", "w") as f:
         f.write(str(page_list))
     """
-    #extract_every_data_in_page(SNU_BAMBOO, 4, ucount = 4)
+    #page = FB_Page(SNU_BAMBOO)
+    #page.extract_every_data_in_page(4, ucount = 4)
     post = FB_Post(SNU_BAMBOO, 1878469378911352)
     comment_every = post.get_every_comments()
     print(len(comment_every))
     with open("comment_every.txt", "w") as f:
         f.write(str(comment_every))
-
-    
-
